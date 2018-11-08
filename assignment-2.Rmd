@@ -1,0 +1,239 @@
+---
+title: "assignment-2"
+author: "Pasquet Marc"
+date: "08/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("assignment-2.Rmd")
+```
+
+
+```{r}
+`%>%` <- magrittr::`%>%`
+```
+
+## Ex. 1
+
+
+```{r}
+iris_subset_1 <- iris[c(89:94, 108:112),]
+iris_subset_2 <- iris[88:114,]
+```
+
+```{r}
+permutation_subset1 <- permutation_twogroups(iris_subset_1, "Sepal.Width", "Species", "versicolor", "virginica", difference_in_means)
+
+permutation_subset2 <- permutation_twogroups(iris_subset_2, "Sepal.Width", "Species", "versicolor", "virginica", difference_in_means)
+```
+
+```{r}
+permutation_test_subset1 <- tibble::as_tibble(permutation_subset1["permuted"])
+p <- ggplot2::ggplot(permutation_test_subset1, ggplot2::aes(x=permuted)) +
+  ggplot2::geom_histogram(fill="blue", colour="red") +
+  ggplot2::xlim(-0.7, 0.7) +
+  ggplot2::ylim(0, 2000) +
+  ggplot2::labs(x = "Moyenne pour la permutation du subset 1")
+p <- p + ggplot2::geom_vline(xintercept=permutation_subset1$observed)
+print(p)
+
+permutation_test_subset2 <- tibble::as_tibble(permutation_subset2["permuted"])
+z <- ggplot2::ggplot(permutation_test_subset2, ggplot2::aes(x=permuted)) +
+  ggplot2::geom_histogram(fill="blue", colour="red") +
+  ggplot2::xlim(-0.7, 0.7) +
+  ggplot2::ylim(0, 2000) +
+  ggplot2::labs(x = "Moyenne pour la permutation du subset 2")
+z <- z + ggplot2::geom_vline(xintercept=permutation_subset2$observed)
+print(z)
+```
+
+La différence qu'on observe entre les deux histogrammes s'explique notamment par le nombre d'observation ; 11 pour le premier subset, 24 pour le deuxième. Cet écart implique une différence relative à la dispersion des moyennes observées, car le nombre de permutations possibles augmente exponentiellement en fonction du nombre d'observation. Et plus on compte d'observations, plus l'histogramme ressemble à une distribution normale. La position du test est donc plus proche de zéro pour le subset 1 que pour le subset 2, puisque le plus grand nombre d'observations et de permutations possibles nous donne un résulstat plus représentatif.  
+
+```{r}
+print(permutation_subset2$observed)
+
+print(permutation_subset1$observed)
+```
+
+
+
+```{r}
+permutation_pvalue_twosided(permutation_subset1)
+permutation_pvalue_twosided(permutation_subset2)
+```
+
+Concernant le subset1, on aurait seulement 80% de chance d'avoir raison si l'on rejettait l'hypothèse nulle (différence des moyennes égale à zéro). En revanche pour le subset2 cette probabilité s'apprécie, et on aurait plus de 92% de chance d'avoir raison. Dans un cas comme dans l'autre l'hypothèse nulle est loin d'être improbable. 
+
+## Ex. 2
+
+```{r}
+devtools::install_github("ewan/stats_course", subdir="data/stress_shift", force=TRUE)
+```
+
+# Task A
+
+```{r}
+# help("filter") --> |
+stress_shift_3dict <- dplyr::filter(stressshift::stress_shift_unamb, Dict == 'W1802' | Dict == 'J1917' | Dict == 'C1687')
+
+nombre_de_ligne <- nrow(stress_shift_3dict)
+nombre_de_ligne
+```
+
+# Task B
+
+```{r}
+stress_shift_3dict_using_pipe <- stressshift::stress_shift_unamb %>% dplyr::filter(Dict %in% c("W1802", "J1917", "C1687"))
+
+identical(stress_shift_3dict, stress_shift_3dict_using_pipe)
+```
+
+
+# Task C
+
+```{r}
+stress_shift_3dict_nouns <- stress_shift_3dict %>% filter(Category == 'Noun')
+stress_shift_3dict_verbs <- stress_shift_3dict %>% filter(Category == 'Verb')
+
+stress_shift_3dict_using_bind <- dplyr::bind_rows(stress_shift_3dict_nouns, stress_shift_3dict_verbs)
+stress_shift_3dict_using_bind_reversed <- dplyr::bind_rows(stress_shift_3dict_verbs, stress_shift_3dict_nouns)
+
+identical(stress_shift_3dict, stress_shift_3dict_using_bind)
+identical(stress_shift_3dict, stress_shift_3dict_using_bind_reversed)
+
+```
+
+Le tableau "reversed"" n'est pas identique au tableau d'origine car l'ordre n'est pas le même, il modifie la correspondance entre les données et les indices. En fonction de ce qu'on souhaite faire sur ce jeu de donnée, et de manière générale avec la commande "filter", il faut donc garder à l'esprit que la notion d'ordre est importante puisqu'une simple erreur d'innatention dans l'ordre des arguments de la commande "bind" peut entrainer des erreurs critiques. 
+
+# Task D
+
+```{r}
+stress_shift_nouns_renamed <- stressshift::stress_shift_unamb %>% dplyr::filter(Category == "Noun") %>% dplyr::select(Word, Dict, Syllable) %>% dplyr::rename(Syllable_Noun = Syllable)
+
+stress_shift_verbs_renamed <- stressshift::stress_shift_unamb %>% dplyr::filter(Category == "Verb") %>% dplyr::select(Word, Dict, Syllable) %>% dplyr::rename(Syllable_Verb = Syllable)
+
+stress_shift_wide <- dplyr::inner_join(stress_shift_nouns_renamed, stress_shift_verbs_renamed)
+```
+
+La commande 'inner_join' réclame que pour chaque entrée provenant des tableaux "nouns_renamed" et "verbs_renamed", les colonnes "Word" et "Dict" soient identiques. La commande écarte donc les entrées où à un mot donnée n'existe aucune correspondance de Dictionnaire entre les deux tableaux, et inversement.
+
+# Task E
+
+```{r}
+ggplot2::ggplot(stressshift::stress_shift_unamb,ggplot2::aes(x=Category, fill=Syllable)) + ggplot2::geom_bar(position="dodge", colour="white")
+```
+
+# Task F 
+
+```{r}
+stress_shift_byword <- stress_shift_wide %>% dplyr::group_by(Word) %>% dplyr::summarize(Noun_Percent_Syll_1 = (sum(Syllable_Noun == "Syllable 1") / n()) * 100, Verb_Percent_Syll_1 = (sum(Syllable_Verb == "Syllable 1") / n()) * 100)
+
+nrow(stress_shift_byword)
+```
+
+# Task G
+
+```{r}
+ggplot2::ggplot(stress_shift_byword, ggplot2::aes(x=Noun_Percent_Syll_1,  y=Verb_Percent_Syll_1)) + ggplot2::geom_point() 
+```
+
+
+# Task H
+
+...
+
+## Ex. 3
+
+```{r}
+set.seed(12)
+data_A <- data.frame("group" = "A", "value" = rnorm(50, 3, 2))
+data_B <- data.frame("group" = "B", "value" = rnorm(50, 4, 2))
+data <- dplyr::bind_rows(data_A, data_B)
+set.seed(NULL)
+
+t.test(data_A$value, data_B$value)
+
+```
+
+Nous rejetons l'hypothèse nulle car nous avons une p-value significative. La différence des moyennes dentre les deux groupes n'est donc pas égale à zéro. On peut dire avec 95% de certitude que cette différence oscille dans l'intervalle [-2.1314085, -0.7626793].
+
+```{r}
+set.seed(12)
+data_A5 <- data.frame("group" = "A", "value" = rnorm(5, 3, 2))
+data_B5 <- data.frame("group" = "B", "value" = rnorm(5, 4, 2))
+A5 <- dplyr::bind_rows(df, data_A5)
+B5 <- dplyr::bind_rows(df, data_B5)
+set.seed(NULL)
+
+t.test(data_A5$value, data_B5$value)
+```
+
+Avec une réduction des observations on doit changer d'hypothèse et accepter l'hypothèse nulle, i.e, la différence de moyennes entres les deux groupes est égale à zéro (p-value de 0,1577). De fait, l'intervalle de certitude contient la valeur zéro. 
+
+
+```{r}
+set.seed(12)
+A <- rnorm(5, 3, 2)
+B <- rnorm(5, 4, 2)
+set.seed(NULL)
+
+overall_mean <- mean(c(A, B))
+N_SAMPLES <- 9999
+statistics <- rep(NA, N_SAMPLES)
+for (i in 1:N_SAMPLES) {
+  sample_A_h0 <- rnorm(5, overall_mean, 2)
+  sample_B_h0 <- rnorm(5, overall_mean, 2)
+  
+  v <- t.test(sample_A_h0, sample_B_h0)
+  statistics[i] <- v$statistic
+}
+hist(statistics, freq=FALSE, breaks=80, xlim=c(-6,6))
+abline(v=t.test(A, B)$statistic)
+
+
+set.seed(12)
+C <- rnorm(50, 3, 2)
+D <- rnorm(50, 4, 2)
+set.seed(NULL)
+
+overall_mean1 <- mean(c(data_A$value, data_B$value))
+N_SAMPLES <- 9999
+statistics <- rep(NA, N_SAMPLES)
+for (i in 1:N_SAMPLES) {
+  data_A_h0 <- rnorm(50, overall_mean, 2)
+  data_B_h0 <- rnorm(50, overall_mean, 2)
+  v <- t.test(data_A_h0, data_B_h0)
+  statistics[i] <- v$statistic
+}
+hist(statistics, freq=FALSE, breaks=80, xlim=c(-6,6))
+abline(v=t.test(C, D)$statistic)
+```
+
+
+Dans le premier grapgique (5), la ligne représentant la t.valeur est plus proche de zéro que dans le second graphique (50). Plus on a de donées, plus l'échantillon est représentatif ; les effets signgifatifs ressortent avec plus de saillance. 
+
+# Exercise 4
+
+# Ex. 4
+
+```{r}
+sample_sizes <- c(50, 5)
+standard_dev <- c(2, 6)
+diff_in_mean <- c(1, 2)
+power_df <- NULL 
+for (size in sample_sizes){
+  for (deviation in standard_dev){
+    for (difference in diff_in_mean){
+      n_test <- 9999
+      n_successes <- 0
+      for (i in 1: n_test){
+      }}}}
+
+```
+
+...
